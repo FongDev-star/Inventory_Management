@@ -13,8 +13,13 @@ import helmet from "helmet";
 import {apiLimiter} from "./middleware/rateLimit.middleware.js";
 import {notFound, errorHandler} from "./middleware/error.middleware.js";
 import categoryRoutes from "./routes/category.route.js";
+import path from "path";
+import { fileURLToPath } from "url";
+
+
 dotenv.config();
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.set("trust proxy", 1);
 app.use(helmet());
@@ -39,6 +44,18 @@ app.use("/api/inventory", inventoryRoutes);
 app.use("/api/sales", saleRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/users", userRoutes);
+
+if (process.env.NODE_ENV === "production") {
+  const distPath = path.join(__dirname, "../frontend/dist");
+
+  app.use(express.static(distPath));
+
+  // any non-API page request returns the React app, so refreshing /products works
+  app.use((req, res, next) => {
+    if (req.method !== "GET" || req.path.startsWith("/api")) return next();
+    res.sendFile(path.join(distPath, "index.html"));
+  });
+}
 
 app.use(notFound);
 app.use(errorHandler);
